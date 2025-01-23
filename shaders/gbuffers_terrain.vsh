@@ -24,7 +24,7 @@ void main() {
     v_vertex.normal = vaNormal;
     v_vertex.tangent = at_tangent;
     v_vertex.uv_color = vaUV0;
-    v_vertex.uv_light = vaUV2/256.0 + 1./32.;
-    v_vertex.bpos = at_midBlock/64.;
+    v_vertex.uv_light = vaUV2 / 256.0 + 1. / 32.;
+    v_vertex.bpos = at_midBlock / 64.;
     gl_Position = vec4(vaPosition + chunkOffset, 1);
 }
