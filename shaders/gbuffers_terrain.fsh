@@ -20,6 +20,7 @@ in vec2 v_uv_color;
 in vec2 v_uv_light;
 in vec3 v_eye_pos;
 in vec3 v_mid;
+in float v_mc_id;
 
 in float v_aspect;
 in float v_z;
@@ -91,19 +92,26 @@ Hit DDA(vec3 ro, vec3 rd) {
 }
 
 void main() {
+    float prio = dot(vec3(0.5, 2.5, 1.5), v_normal) + 6 * dot(vec3(1, 2, -4), mod(floor(v_mid + cameraPosition), 2));
+    outColor = vec4(v_uv_color, v_z*16, 1);
+    //return;
+
     mat3 TBN = tbnNormalTangent(v_aspect * v_normal, v_tangent.xyz);
     vec2 ray_origin = fract(v_uv_color * atlasSize / 16) - 0.5;
     Hit h = DDA(vec3(ray_origin, v_z), normalize(v_eye_pos * TBN) * vec3(1, -v_tangent.w, 1));
-    float occlusion = mix(0.5, 0.9, 1 + 8 * h.pos.z);
-    float prio = dot(vec3(0.5, 2.5, 1.5), v_normal) + 6 * dot(vec3(1, 2, -4), mod(floor(v_mid + cameraPosition), 2));
     vec3 hitPos = v_eye_pos + normalize(v_eye_pos) * (h.dist + 0.00005 * prio);
     vec4 projected = projectionMatrix * modelViewMatrix * vec4(hitPos, 1);
-    gl_FragDepth = 0.5 + 0.5 * projected.z / projected.w;
 
     vec4 base = correctedSample(gtexture, h.delta);
     if (base.a < 0.1) discard;
-    vec3 normal = normalize(TBN * (h.side * vec3(1, -v_tangent.w, 1)));
-    float light = dot(normal * normal, vec3(0.6, 0.25 * normal.y + 0.75, 0.8));
+    gl_FragDepth = 0.5 + 0.5 * projected.z / projected.w;
+
+    float light = 1;
+    if (abs(v_mc_id-1) > 0.01) {
+        vec3 normal = normalize(TBN * (h.side * vec3(1, -v_tangent.w, 1)));
+        float occlusion = mix(0.5, 0.9, 1 + 8 * h.pos.z);
+        light = occlusion * dot(normal * normal, vec3(0.6, 0.25 * normal.y + 0.75, 0.8));
+    }
     vec3 tint = texture(lightmap, v_uv_light).rgb * v_color;
-    outColor = base * vec4(tint * light * occlusion, 1);
+    outColor = base * vec4(tint * light, 1);
 }

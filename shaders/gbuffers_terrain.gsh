@@ -14,6 +14,7 @@ in VS_OUT {
     vec2 uv_color;
     vec2 uv_light;
     vec3 bpos;
+    float mc_id;
 } gs_in[];
 
 float D = 1. / 16.;
@@ -27,6 +28,7 @@ out vec2 v_uv_color;
 out vec2 v_uv_light;
 out vec3 v_eye_pos;
 out vec3 v_mid;
+out float v_mc_id;
 
 out float v_aspect;
 out float v_z;
@@ -46,6 +48,7 @@ void main() {
     v_out_normal = vec3(0, 0, 1);
     v_normal = gs_in[0].normal;
     v_tangent = gs_in[0].tangent;
+    v_mc_id = gs_in[0].mc_id;
     v_mid = gl_in[0].gl_Position.xyz + gs_in[0].bpos;
 
     vec3 p0 = gl_in[0].gl_Position.xyz;
