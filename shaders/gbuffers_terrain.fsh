@@ -1,4 +1,6 @@
-#version 460
+#version 150
+
+#include "lib.glsl"
 
 uniform sampler2D gtexture;
 uniform sampler2D lightmap;
@@ -14,13 +16,14 @@ layout(location = 0) out vec4 outColor;
 in vec3 v_normal;
 in vec4 v_tangent;
 flat in vec3 v_out_normal;
+flat in int v_light_type;
 
 in vec3 v_color;
 in vec2 v_uv_color;
 in vec2 v_uv_light;
 in vec3 v_eye_pos;
 in vec3 v_mid;
-in float v_mc_id;
+flat in int v_mc_id;
 
 in float v_aspect;
 in float v_z;
@@ -93,8 +96,6 @@ Hit DDA(vec3 ro, vec3 rd) {
 
 void main() {
     float prio = dot(vec3(0.5, 2.5, 1.5), v_normal) + 6 * dot(vec3(1, 2, -4), mod(floor(v_mid + cameraPosition), 2));
-    outColor = vec4(v_uv_color, v_z*16, 1);
-    //return;
 
     mat3 TBN = tbnNormalTangent(v_aspect * v_normal, v_tangent.xyz);
     vec2 ray_origin = fract(v_uv_color * atlasSize / 16) - 0.5;
@@ -106,12 +107,17 @@ void main() {
     if (base.a < 0.1) discard;
     gl_FragDepth = 0.5 + 0.5 * projected.z / projected.w;
 
-    float light = 1;
-    if (abs(v_mc_id-1) > 0.01) {
+    float light;
+    if (v_light_type == FLAG_FLAT_LIGHTING) {
+        light = 1;
+    } else if (v_light_type == FLAG_DARK_LIGHTING) {
+        light = 0.75;
+    } else {
         vec3 normal = normalize(TBN * (h.side * vec3(1, -v_tangent.w, 1)));
         float occlusion = mix(0.5, 0.9, 1 + 8 * h.pos.z);
         light = occlusion * dot(normal * normal, vec3(0.6, 0.25 * normal.y + 0.75, 0.8));
     }
     vec3 tint = texture(lightmap, v_uv_light).rgb * v_color;
     outColor = base * vec4(tint * light, 1);
+    //outColor = vec4(float(has(v_mc_id,1))/2+float(has(v_mc_id,2)), float(has(v_mc_id,4))/2+float(has(v_mc_id,8)), v_light_type/3, 1);
 }

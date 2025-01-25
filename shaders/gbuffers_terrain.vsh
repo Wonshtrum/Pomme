@@ -1,4 +1,4 @@
-#version 460
+#version 150
 
 uniform vec3 chunkOffset;
 
@@ -18,7 +18,7 @@ out VS_OUT {
     vec2 uv_color;
     vec2 uv_light;
     vec3 bpos;
-    float mc_id;
+    int mc_id;
 } v_vertex;
 
 void main() {
@@ -28,6 +28,6 @@ void main() {
     v_vertex.uv_color = vaUV0;
     v_vertex.uv_light = vaUV2 / 256.0 + 1. / 32.;
     v_vertex.bpos = at_midBlock / 64.;
-    v_vertex.mc_id = mc_Entity.x;
+    v_vertex.mc_id = mc_Entity.x < 0 ? 0 : int(mc_Entity.x);
     gl_Position = vec4(vaPosition + chunkOffset, 1);
 }
