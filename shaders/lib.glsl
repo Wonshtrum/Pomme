@@ -1,3 +1,5 @@
+#define EXTRUSION 1
+
 #define FLAG_FLIPPED 1
 #define FLAG_DIAG_FLIPPED 2
 #define FLAG_FLAT_LIGHTING 4

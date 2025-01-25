@@ -95,16 +95,16 @@ Hit DDA(vec3 ro, vec3 rd) {
 }
 
 void main() {
-    float prio = dot(vec3(0.5, 2.5, 1.5), v_normal) + 6 * dot(vec3(1, 2, -4), mod(floor(v_mid + cameraPosition), 2));
-
     mat3 TBN = tbnNormalTangent(v_aspect * v_normal, v_tangent.xyz);
     vec2 ray_origin = fract(v_uv_color * atlasSize / 16) - 0.5;
     Hit h = DDA(vec3(ray_origin, v_z), normalize(v_eye_pos * TBN) * vec3(1, -v_tangent.w, 1));
-    vec3 hitPos = v_eye_pos + normalize(v_eye_pos) * (h.dist + 0.00005 * prio);
-    vec4 projected = projectionMatrix * modelViewMatrix * vec4(hitPos, 1);
 
     vec4 base = correctedSample(gtexture, h.delta);
     if (base.a < 0.1) discard;
+
+    float prio = dot(vec3(0.5, 2.5, 1.5), v_normal) + 6 * dot(vec3(1, 2, -4), mod(floor(v_mid + cameraPosition), 2));
+    vec3 hitPos = v_eye_pos + normalize(v_eye_pos) * (h.dist + 0.00005 * prio);
+    vec4 projected = projectionMatrix * modelViewMatrix * vec4(hitPos, 1);
     gl_FragDepth = 0.5 + 0.5 * projected.z / projected.w;
 
     float light;

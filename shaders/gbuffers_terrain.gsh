@@ -19,7 +19,7 @@ in VS_OUT {
     int mc_id;
 } gs_in[];
 
-float D = 1. / 16.;
+float D = EXTRUSION / 16.;
 
 out vec3 v_normal;
 out vec4 v_tangent;
