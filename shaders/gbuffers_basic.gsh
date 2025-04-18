@@ -5,6 +5,7 @@
 uniform sampler2D gtexture;
 uniform mat4 modelViewMatrix;
 uniform mat4 projectionMatrix;
+uniform int renderStage;
 
 layout(triangles) in;
 layout(triangle_strip, max_vertices = 12) out;
@@ -41,6 +42,22 @@ flat out int v_light_type;
 flat out int v_mc_id;
 
 void main() {
+    if (renderStage == MC_RENDER_STAGE_PARTICLES) {
+        mat4 mvp = projectionMatrix * modelViewMatrix;
+        for (int i = 0; i < 3; i++) {
+            v_color = gs_in[i].color;
+            v_uv_color = gs_in[i].uv_color;
+            v_uv_light = gs_in[i].uv_light;
+
+            vec4 pos = mvp * gl_in[i].gl_Position;
+            v_z = pos.z / pos.w;
+            gl_Position = pos;
+            EmitVertex();
+        }
+        EndPrimitive();
+        return;
+    }
+
     v_texture_size = textureSize(gtexture, 0);
     v_mc_id = gs_in[0].mc_id;
     v_mid = gl_in[0].gl_Position.xyz + gs_in[0].bpos;

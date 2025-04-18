@@ -8,6 +8,7 @@ uniform sampler2D normals;
 uniform mat4 projectionMatrix;
 uniform mat4 modelViewMatrix;
 uniform vec3 cameraPosition;
+uniform int renderStage;
 
 // DRAWBUFFERS:0
 layout(location = 0) out vec4 outColor;
@@ -101,10 +102,18 @@ Hit DDA(vec3 p, vec3 rd) {
 }
 
 void main() {
+    if (renderStage == MC_RENDER_STAGE_PARTICLES) {
+        vec4 base = texture2D(gtexture, v_uv_color);
+        if (base.a < 0.1) discard;
+        outColor = base * vec4(v_color, 1);
+        gl_FragDepth = 0.5 + 0.5 * v_z;
+        return;
+    }
+
     UV = clamp(v_uv_color * v_texture_size - v_min, vec2(0.001), v_span-0.001);
-    outColor = vec4(v_color, 1);
     outColor = vec4(1.*v_max/v_texture_size, 0, 1);
     outColor = vec4(fract(UV+v_min), 0, 1);
+    outColor = vec4(v_color, 1);
     //outColor = vec4(v_min/32., 0, 1);
 
     mat3 TBN = tbnNormalTangent(v_aspect * v_normal, v_tangent.xyz);
