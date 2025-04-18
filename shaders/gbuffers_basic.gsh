@@ -40,9 +40,36 @@ out float v_aspect;
 
 flat out int v_light_type;
 flat out int v_mc_id;
+flat out int v_disabled;
 
 void main() {
-    if (renderStage == MC_RENDER_STAGE_PARTICLES) {
+    v_mc_id = gs_in[0].mc_id;
+    v_mid = gl_in[0].gl_Position.xyz + gs_in[0].bpos;
+    v_normal = gs_in[0].normal;
+
+    #ifdef ENTITY_STAGE
+        v_light_type = 0;
+        const float flip_base = 0;
+        const float flip = 1;
+    #else
+        bool is_diag = abs(abs(dot(v_normal, vec3(1, 0, 0)))-0.5) < 0.4;
+        bool is_back = dot(v_normal, vec3(1, 0, 2)) < 0;
+        float flip = is_back && (has(v_mc_id, FLAG_FLIPPED) || is_diag && has(v_mc_id, FLAG_DIAG_FLIPPED)) ? -1 : 1;
+        float flip_base = flip > 0 ? 0 : gs_in[0].uv_color.x + gs_in[2].uv_color.x;
+
+        if (has(v_mc_id, FLAG_FLAT_LIGHTING) || (is_diag && has(v_mc_id, FLAG_DIAG_LIGHTING))) {
+            v_light_type = FLAG_FLAT_LIGHTING;
+        } else if (has(v_mc_id, FLAG_DARK_LIGHTING)) {
+            v_light_type = FLAG_DARK_LIGHTING;
+        } else {
+            v_light_type = 0;
+        }
+    #endif
+
+    float distance = length(gl_in[0].gl_Position);
+    if (renderStage == MC_RENDER_STAGE_PARTICLES || distance > EXTRUSION_RENDER_DISTANCE) {
+        if (renderStage == MC_RENDER_STAGE_PARTICLES) v_light_type = FLAG_FLAT_LIGHTING;
+        v_disabled = 1;
         mat4 mvp = projectionMatrix * modelViewMatrix;
         for (int i = 0; i < 3; i++) {
             v_color = gs_in[i].color;
@@ -58,26 +85,11 @@ void main() {
         return;
     }
 
+    v_disabled = 0;
     v_texture_size = textureSize(gtexture, 0);
-    v_mc_id = gs_in[0].mc_id;
-    v_mid = gl_in[0].gl_Position.xyz + gs_in[0].bpos;
-    v_normal = gs_in[0].normal;
     v_out_normal = UP;
-
-    bool is_diag = abs(abs(dot(v_normal, vec3(1, 0, 0)))-0.5) < 0.4;
-    bool is_back = dot(v_normal, vec3(1, 0, 2)) < 0;
-    float flip = is_back && (has(v_mc_id, FLAG_FLIPPED) || is_diag && has(v_mc_id, FLAG_DIAG_FLIPPED)) ? -1 : 1;
-    float flip_base = flip > 0 ? 0 : gs_in[0].uv_color.x + gs_in[2].uv_color.x;
     v_tangent = vec4(normalize(gs_in[0].tangent.xyz), sign(gs_in[0].tangent.w)) * flip;
     vec3 bitangent = cross(v_tangent.xyz, v_normal);
-
-    if (has(v_mc_id, FLAG_FLAT_LIGHTING) || (is_diag && has(v_mc_id, FLAG_DIAG_LIGHTING))) {
-        v_light_type = FLAG_FLAT_LIGHTING;
-    } else if (has(v_mc_id, FLAG_DARK_LIGHTING)) {
-        v_light_type = FLAG_DARK_LIGHTING;
-    } else {
-        v_light_type = 0;
-    }
 
     vec2 v0 = gs_in[0].uv_color * v_texture_size;
     vec2 v1 = gs_in[1].uv_color * v_texture_size;

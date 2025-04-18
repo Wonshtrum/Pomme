@@ -8,7 +8,6 @@ uniform sampler2D normals;
 uniform mat4 projectionMatrix;
 uniform mat4 modelViewMatrix;
 uniform vec3 cameraPosition;
-uniform int renderStage;
 
 // DRAWBUFFERS:0
 layout(location = 0) out vec4 outColor;
@@ -33,6 +32,7 @@ in float v_aspect;
 
 flat in int v_light_type;
 flat in int v_mc_id;
+flat in int v_disabled;
 
 
 mat3 tbnNormalTangent(vec3 normal, vec3 tangent) {
@@ -102,10 +102,19 @@ Hit DDA(vec3 p, vec3 rd) {
 }
 
 void main() {
-    if (renderStage == MC_RENDER_STAGE_PARTICLES) {
-        vec4 base = texture2D(gtexture, v_uv_color);
+    vec3 tint = texture(lightmap, v_uv_light).rgb * v_color;
+    if (v_disabled == 1) {
+        float light;
+        if (v_light_type == FLAG_FLAT_LIGHTING) {
+            light = 1;
+        } else if (v_light_type == FLAG_DARK_LIGHTING) {
+            light = 0.75;
+        } else {
+            light = dot(v_normal * v_normal, vec3(0.6, 0.25 * v_normal.y + 0.75, 0.8));
+        }
+        vec4 base = texture(gtexture, v_uv_color);
         if (base.a < 0.1) discard;
-        outColor = base * vec4(v_color, 1);
+        outColor = base * vec4(tint * light, 1);
         gl_FragDepth = 0.5 + 0.5 * v_z;
         return;
     }
@@ -144,6 +153,5 @@ void main() {
     vec4 projected = projectionMatrix * modelViewMatrix * vec4(hitPos, 1);
     gl_FragDepth = 0.5 + 0.5 * projected.z / projected.w;
 
-    vec3 tint = texture(lightmap, v_uv_light).rgb * v_color;
     outColor = base * vec4(tint * light, 1);
 }
