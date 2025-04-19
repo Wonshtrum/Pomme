@@ -24,6 +24,7 @@ uniform sampler2D normals;
 uniform mat4 projectionMatrix;
 uniform mat4 modelViewMatrix;
 uniform vec3 cameraPosition;
+uniform vec4 entityColor;
 
 // DRAWBUFFERS:0
 layout(location = 0) out vec4 outColor;
@@ -170,4 +171,7 @@ void main() {
     gl_FragDepth = 0.5 + 0.5 * projected.z / projected.w;
 
     outColor = base * vec4(tint * light, 1);
+#ifdef ENTITY_STAGE
+    outColor.rgb = mix(outColor.rgb, entityColor.rgb, entityColor.a);
+#endif
 }
