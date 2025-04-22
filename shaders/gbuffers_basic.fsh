@@ -44,8 +44,7 @@ flat in ivec2 v_texture_size;
 flat in ivec2 v_min;
 flat in ivec2 v_max;
 flat in ivec2 v_span;
-in float v_factor;
-in float v_aspect;
+in vec3 v_aspect;
 
 flat in int v_light_type;
 flat in int v_mc_id;
@@ -90,14 +89,10 @@ Hit DDA(vec3 p, vec3 rd) {
         vec2 delta = (cell - origin).xy;
         vec4 albedo = correctedSample(gtexture, delta);
         float alpha = albedo.a;
-        //float depth = EXTRUSION*max(0.01, dot(albedo.rgb, vec3(0.3, 0.3, 0.4)));
+        //float depth = max(0.01, dot(albedo.rgb, vec3(0.3, 0.3, 0.4)));
         float depth = correctedSample(normals, delta).a;
 	if (depth == 1.) depth = 0.5;
-#ifdef ONLY_EXTRUSION
-	depth = max(depth-0.5, 0)*4.*EXTRUSION;
-#else
-	depth = (depth-0.5)*4.*EXTRUSION;
-#endif
+	depth = max(depth-0.5, EXTRUSION_MIN/2.);
         if (p.z < depth && alpha > 0.1) {
             return Hit(p, delta, t, i == 0 ? mix(UP, v_out_normal, 0.5) : mix(UP, -step_axis * rd_sign, 0.5), i);
         }
@@ -117,7 +112,7 @@ Hit DDA(vec3 p, vec3 rd) {
 
         vec3 new_cell = cell + step_axis * rd_sign;
         cell += step_axis * rd_sign;
-        if (!inBound(cell)) break;
+        if (!inBound(cell) || p.z < min(0, EXTRUSION_MIN/2.)) break;
         steps += rd_step * step_axis - step_size;
     }
     //return Hit(p, vec2(0), t, vec3(0), i);
@@ -125,14 +120,6 @@ Hit DDA(vec3 p, vec3 rd) {
 }
 
 void main() {
-    outColor = vec4(texture(normals, v_uv_color).a > 0.4);
-    outColor = texture(gtexture, v_uv_color);
-    outColor = vec4(v_eye_pos, 1);
-    vec3 hitPos_ = v_eye_pos + normalize(v_eye_pos) * 0;
-    vec4 projected_ = projectionMatrix * modelViewMatrix * vec4(hitPos_, 1);
-    //gl_FragDepth = 0.5 + 0.5 * projected.z / projected.w;
-    outColor = vec4(0.5+0.5*projected_.z/projected_.w);
-    //return;
     vec3 tint = texture(lightmap, v_uv_light).rgb * v_color;
     if (v_disabled == 1) {
         float light;
@@ -156,8 +143,8 @@ void main() {
     outColor = vec4(v_color, 1);
     //outColor = vec4(v_min/32., 0, 1);
 
-    mat3 TBN = tbnNormalTangent(v_aspect * v_normal, v_tangent.xyz);
-    Hit h = DDA(vec3(UV, v_z), normalize(v_eye_pos) * TBN * vec3(1, -v_tangent.w, 1));
+    mat3 TBN = tbnNormalTangent(v_normal, v_tangent.xyz);
+    Hit h = DDA(vec3(UV, v_z), normalize(v_eye_pos) * TBN * vec3(1, -v_tangent.w, 1) / v_aspect);
     //outColor = vec4(h.n/16.);
 
     vec4 base = correctedSample(gtexture, h.delta);
@@ -180,7 +167,7 @@ void main() {
 #else
     float prio = dot(vec3(0.5, 2.5, 1.5), v_normal) + 6 * dot(vec3(1, 2, -4), mod(floor(v_mid + cameraPosition), 2)) - 0*sign(h.pos.z);
 #endif
-    vec3 hitPos = v_eye_pos + normalize(v_eye_pos) * (h.dist * v_factor + 0.00005 * prio);
+    vec3 hitPos = v_eye_pos + normalize(v_eye_pos) * (h.dist + 0.00005 * prio);
     vec4 projected = projectionMatrix * modelViewMatrix * vec4(hitPos, 1);
     gl_FragDepth = 0.5 + 0.5 * projected.z / projected.w;
 

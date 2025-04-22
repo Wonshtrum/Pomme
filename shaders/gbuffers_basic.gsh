@@ -51,8 +51,7 @@ flat out ivec2 v_texture_size;
 flat out ivec2 v_min;
 flat out ivec2 v_max;
 flat out ivec2 v_span;
-out float v_factor;
-out float v_aspect;
+out vec3 v_aspect;
 
 flat out int v_light_type;
 flat out int v_mc_id;
@@ -121,10 +120,11 @@ void main() {
 
     vec2 axes = abs(vec2(dot(diag, v_tangent.xyz), dot(diag, bitangent)));
     vec2 pixel = axes / v_span;
-    float depth = EXTRUSION * pixel.y;
-    v_factor = length(vec3(pixel, depth)) / length(vec3(1, 1, EXTRUSION));
-    v_aspect = pixel.x / pixel.y;
-    if (v_aspect > 2 || v_aspect < 0.01) return;
+    float depth = EXTRUSION/4.;
+    //v_factor = length(vec3(pixel, depth)) / length(vec3(1, 1, EXTRUSION));
+    v_aspect = vec3(pixel.x, pixel.y, depth);
+    float ratio = pixel.x / pixel.y;
+    if (ratio > 2 || ratio < 0.01) return;
 
     mat4 mvp = projectionMatrix * modelViewMatrix;
     vec4 normal = vec4(depth * v_normal, 0);
@@ -134,7 +134,7 @@ void main() {
         v_uv_color = vec2(flip_base + flip * gs_in[i].uv_color.x, gs_in[i].uv_color.y);
         v_uv_light = gs_in[i].uv_light;
 
-        v_z = EXTRUSION;
+        v_z = 1;
         pos = gl_in[i].gl_Position + normal;
         gl_Position = mvp * pos;
         v_eye_pos = pos.xyz;
@@ -142,13 +142,13 @@ void main() {
     }
     EndPrimitive();
 
-#ifdef ENTITY_STAGE
+#ifdef ENTITY_STAGE_
     for (int i = 0; i < 3; i++) {
         v_color = gs_in[i].color;
         v_uv_color = vec2(flip_base + flip * gs_in[i].uv_color.x, gs_in[i].uv_color.y);
         v_uv_light = gs_in[i].uv_light;
 
-        v_z = -EXTRUSION;
+        v_z = -1;
         pos = gl_in[i].gl_Position - normal;
         gl_Position = mvp * pos;
         v_eye_pos = pos.xyz;
@@ -165,14 +165,14 @@ void main() {
         v_uv_light = gs_in[i].uv_light;
         v_out_normal = i == 2 ? vec3(out_normal_1, 0) : vec3(out_normal_2, 0);
 
-        v_z = EXTRUSION;
+        v_z = 1;
         pos = gl_in[i].gl_Position + normal;
         gl_Position = mvp * pos;
         v_eye_pos = pos.xyz;
         EmitVertex();
 
-#ifdef ENTITY_STAGE
-        v_z = -EXTRUSION;
+#ifdef ENTITY_STAGE_
+        v_z = -1;
         pos = gl_in[i].gl_Position - normal;
 #else
         v_z = 0;
