@@ -63,6 +63,7 @@ vec4 correctedSample(sampler2D sampler, vec2 delta) {
 }
 
 bool inBound(vec3 p) {
+    return p.x >= 0 && p.y >= 0 && p.x < v_span.x && p.y < v_span.y;
     return abs(p.z) <= ceil(float(EXTRUSION)) && p.x >= 0 && p.y >= 0 && p.x < v_span.x && p.y < v_span.y;
 }
 
@@ -89,10 +90,15 @@ Hit DDA(vec3 p, vec3 rd) {
         vec2 delta = (cell - origin).xy;
         vec4 albedo = correctedSample(gtexture, delta);
         float alpha = albedo.a;
-        float depth = EXTRUSION*max(0.01, dot(albedo.rgb, vec3(0.3, 0.3, 0.4)));
-        //if (depth < 0.01) depth = 1;
-        //float depth = 4*correctedSample(normals, delta).a-3;
-        if (abs(p.z) < depth && alpha > 0.1) {
+        //float depth = EXTRUSION*max(0.01, dot(albedo.rgb, vec3(0.3, 0.3, 0.4)));
+        float depth = correctedSample(normals, delta).a;
+	if (depth == 1.) depth = 0.5;
+#ifdef ONLY_EXTRUSION
+	depth = max(depth-0.5, 0)*4.*EXTRUSION;
+#else
+	depth = (depth-0.5)*4.*EXTRUSION;
+#endif
+        if (p.z < depth && alpha > 0.1) {
             return Hit(p, delta, t, i == 0 ? mix(UP, v_out_normal, 0.5) : mix(UP, -step_axis * rd_sign, 0.5), i);
         }
 
@@ -100,9 +106,9 @@ Hit DDA(vec3 p, vec3 rd) {
         step_axis = vec3(lessThanEqual(steps, vec3(step_size)));
         vec3 old_p = p;
         p += rd * step_size;
-        if (abs(p.z) < depth && alpha > 0.1) {
-            //float dz = (depth - old_p.z) / rd.z;
-            float dz = abs((depth - abs(old_p.z)) / rd.z);
+        if (p.z < depth && alpha > 0.1) {
+            float dz = (depth - old_p.z) / rd.z;
+            //float dz = abs((depth - abs(old_p.z)) / rd.z);
             t += dz;
             old_p += rd * dz;
             return Hit(old_p, delta, t, UP, i);
@@ -119,6 +125,14 @@ Hit DDA(vec3 p, vec3 rd) {
 }
 
 void main() {
+    outColor = vec4(texture(normals, v_uv_color).a > 0.4);
+    outColor = texture(gtexture, v_uv_color);
+    outColor = vec4(v_eye_pos, 1);
+    vec3 hitPos_ = v_eye_pos + normalize(v_eye_pos) * 0;
+    vec4 projected_ = projectionMatrix * modelViewMatrix * vec4(hitPos_, 1);
+    //gl_FragDepth = 0.5 + 0.5 * projected.z / projected.w;
+    outColor = vec4(0.5+0.5*projected_.z/projected_.w);
+    //return;
     vec3 tint = texture(lightmap, v_uv_light).rgb * v_color;
     if (v_disabled == 1) {
         float light;
@@ -157,7 +171,7 @@ void main() {
         light = 0.75;
     } else {
         normal = normalize(TBN * (h.side * vec3(1, -v_tangent.w, 1)));
-        float occlusion = mix(0.9, 1.1, h.pos.z / EXTRUSION);
+        float occlusion = EXTRUSION > 0 ? mix(0.9, 1.1, h.pos.z / EXTRUSION) : 1;
         light = occlusion * dot(normal * normal, vec3(0.6, 0.25 * normal.y + 0.75, 0.8));
     }
 

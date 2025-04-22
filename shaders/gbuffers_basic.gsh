@@ -122,7 +122,7 @@ void main() {
     vec2 axes = abs(vec2(dot(diag, v_tangent.xyz), dot(diag, bitangent)));
     vec2 pixel = axes / v_span;
     float depth = EXTRUSION * pixel.y;
-    v_factor = length(vec3(pixel, depth)) / length(vec3(1));
+    v_factor = length(vec3(pixel, depth)) / length(vec3(1, 1, EXTRUSION));
     v_aspect = pixel.x / pixel.y;
     if (v_aspect > 2 || v_aspect < 0.01) return;
 
